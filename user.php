@@ -1,46 +1,66 @@
 <?php
 include 'connect.php';
+
 $target_dir = "uploads/";
 $target_file = "";
-$tmp_file="";
-$uploadOk = 0;
-$imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
+$uploadOk = 1;
+
+// Check if form is submitted
 if(isset($_POST["submit"])) {
     $first_name = $_POST['first_name'];
     $last_name = $_POST['last_name'];
-    $email= $_POST['email'];
+    $email = $_POST['email'];
     $age = $_POST['age'];
-    $address= $_POST['address'];
-    $target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
-    $check = getimagesize($_FILES["fileToUpload"]["tmp_name"]);
-    if($check !== false) {
-    echo "File is an image - " . $check["mime"] . ".";
-      $uploadOk = 1;
-  } else {
-    echo "File is not an image.";
-      $uploadOk = 0;
-  }
-  $sql = "insert into `crud` (first_name,last_name,email,age,address,image_path) values('$first_name','$last_name','$email','$age','$address','$target_file')";
-    
-    $result = mysqli_query($conn,$sql);
+    $address = $_POST['address'];
 
-    if($result){
-        header("location:render.php");
-    }else{
-        die(mysqli_error($conn));
+    // Get the target file name and extension
+    $target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
+    $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+
+    // Check if file is an image
+    $check = getimagesize($_FILES["fileToUpload"]["tmp_name"]);
+    if ($check !== false) {
+        echo "File is an image - " . $check["mime"] . ".";
+    } else {
+        echo "File is not an image.";
+        $uploadOk = 0;
+    }
+
+    // Check if file already exists
+    if (file_exists($target_file)) {
+        echo "Sorry, file already exists.";
+        $uploadOk = 0;
+    }
+
+    // Allow certain file formats
+    if ($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg" && $imageFileType != "gif") {
+        echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
+        $uploadOk = 0;
+    }
+
+    // Check if $uploadOk is set to 0 by an error
+    if ($uploadOk == 0) {
+        echo "Sorry, your file was not uploaded.";
+    } else {
+        // Attempt to move the uploaded file
+        if (move_uploaded_file($_FILES["fileToUpload"]["tmp_name"], $target_file)) {
+            // Prepare SQL statement to prevent SQL injection
+            $stmt = $conn->prepare("INSERT INTO crud (first_name, last_name, email, age, address, image_path) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssisss", $first_name, $last_name, $email, $age, $address, $target_file);
+
+            if ($stmt->execute()) {
+                header("Location: render.php");
+                exit();
+            } else {
+                die("Database error: " . $stmt->error);
+            }
+        } else {
+            echo "Sorry, there was an error uploading your file.";
+        }
     }
 }
-
-// Check if file already exists
-if (file_exists($target_file)) {
-  $uploadOk = 0;
-}
-// Allow certain file formats
-if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg"
-&& $imageFileType != "gif" ) {
-  $uploadOk = 0;
-}
 ?>
+
 
 
 <!doctype html>
